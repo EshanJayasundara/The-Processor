@@ -1,16 +1,16 @@
 module alu(
     input [7:0] data1, data2,
     input [2:0] operation,
-    output [7:0] result,
-    output co
+    output reg [7:0] result, 
+    output reg co
 );
 
     always @(*) begin
         case (operation)
-            3'b000: {co, result} = data2; 
-            3'b001: {co, result} = data1 + data2;
-            3'b010: {co, result} = data1 & data2;
-            3'b011: {co, result} = data1 | data2;
+            3'b000: #1 {co, result} = data2; 
+            3'b001: #2 {co, result} = data1 + data2;
+            3'b010: #1 {co, result} = data1 & data2;
+            3'b011: #1 {co, result} = data1 | data2;
         endcase
     end
     
@@ -27,13 +27,18 @@ module tb;
     initial begin
         $dumpfile("dump.vcd");
         $dumpvars(0,dut);
-        $monitor("%d op %d = %d", d1, d2, result);
+        $monitor("%b op %b = %b %b", d1, d2, co, out);
     end
 
     initial begin
-        d1 = 3; d2 = 4; op = 1;
+        op = 0; d1 = 1; d2 = 4;
         #5
-        d1 = 4; d2 = 4; op = 2;
+        op = 1;
         #5
+        op = 2;
+        #5
+        op = 3;
+        #5
+        $finish();
     end
 endmodule
