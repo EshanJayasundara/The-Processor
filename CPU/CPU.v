@@ -2,23 +2,35 @@
 // Design: CPU of the Simple Processor
 // Author: Eshan Jayasundara
 
+`timescale 1ns/100ps
+
 `include "ALU.v"
 `include "ControlUnit.v"
 `include "reg_file.v"
+`include "mult.v"
+`include "shift.v"
 
 module cpu (
     input [31:0] INSTRUCTION,
     input CLK, RESET,
     output reg signed [31:0] PC
 );
+    parameter W = 8, N = 8;
 
-    wire [7:0] OUT1,OUT2, OUT;
-    reg  [7:0] IN, IN1, IN2, OPCODE, mux2out;
+    wire [W-1:0] OUT1,OUT2, ALU_OUT, MULT_OUT, SHIFT_OUT;
+    reg  [W-1:0] IN, IN1, IN2, OPCODE, mux2out,OUT;
     reg  [2:0] INADDRESS,OUT1ADDRESS,OUT2ADDRESS;
     wire [2:0] ALUOP;
     wire WRITE, ZERO, mux1, mux2, mux3;
+    wire [1:0] mux4;
+    wire [1:0] SHIFT_TYPE; // issue wire SHIFT_TYPE;
+    
+    shift #(.W(W)) shift_dut (.data(OUT1), .shift_amt(IN2), .shift_type(SHIFT_TYPE), .result(SHIFT_OUT));
+    // .shift_type(SHIFT_TYPE) not working
 
-    reg_file #(.W(8), .N(8)) reg_file_dut (.IN(OUT), 
+    multiplier #(.W(W)) mult_dut (.MULTIPLIER(OUT1), .MULTIPLICAND(IN2), .OUT(MULT_OUT));
+
+    reg_file #(.W(W), .N(N)) reg_file_dut (.IN(OUT), 
                                            .OUT1(OUT1), 
                                            .OUT2(OUT2), 
                                            .INADDRESS(INADDRESS), 
@@ -33,13 +45,15 @@ module cpu (
                                 .MUX1(mux1),
                                 .MUX2(mux2),
                                 .MUX3(mux3),
+                                .MUX4(mux4),
                                 .ALUOP(ALUOP),
-                                .WRITE(WRITE)
+                                .WRITE(WRITE),
+                                .shift_type(SHIFT_TYPE)
                                 );
 
     alu #(.W(8)) alu_dut(.data1(OUT1),
                          .operation(ALUOP),
-                         .result(OUT),
+                         .result(ALU_OUT),
                          .data2(IN2),
                          .ZERO(ZERO)
                          );
@@ -51,6 +65,16 @@ module cpu (
         OUT1ADDRESS = INSTRUCTION[10: 8];
         OUT2ADDRESS = INSTRUCTION[ 2: 0];
         INADDRESS   = INSTRUCTION[18:16];
+    end
+
+    // mux to select ALU or Multiplier or shift
+    always @(*) begin
+        case(mux4)
+            2'b00: OUT = ALU_OUT;
+            2'b01: OUT = MULT_OUT;
+            2'b10: OUT = SHIFT_OUT;
+            2'b11: OUT = SHIFT_OUT;
+        endcase
     end
 
     // MUX 2 for selecting subtracting or addition
@@ -79,7 +103,7 @@ module cpu (
     always @(posedge CLK) begin
         if(RESET == 1'b1) #1 PC <= 0;
         else begin
-            if(mux3 == 1'b1 || (INSTRUCTION[26:24] == 3'b111 && ZERO == 1'b1)) #1 PC <= PC + target + 4;
+            if(mux3 == 1'b1 || (INSTRUCTION[26:24] == 3'b111 && ZERO == 1'b1)||(INSTRUCTION[27:24] == 4'b1000 && ZERO == 1'b0)) #1 PC <= PC + target + 4;
             else #1 PC <= PC+4;
         end
     end

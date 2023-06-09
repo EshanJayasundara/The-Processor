@@ -2,6 +2,8 @@
 // Design: ALU of the Simple Processor
 // Author: Eshan Jayasundara
 
+`timescale 1ns/100ps
+
 module fwd(input [7:0] data1, data2, output [7:0] out);
         assign #1 out = data2;
 endmodule

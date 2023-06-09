@@ -1,4 +1,5 @@
 `include "CPU.v"
+`timescale 1ns/100ps
 
 // Computer Architecture (CO224) - Lab 05
 // Design: Testbench of Integrated CPU of Simple Processor
@@ -68,7 +69,7 @@ module cpu_tb;
         #300
         // Display register values
         for(i=0; i<8; i++) begin
-            $display("R%1d = %d", i, cpu_dut.reg_file_dut.registerfile[i]);
+            $display("R%1d = %b", i, cpu_dut.reg_file_dut.registerfile[i]);
         end
 
         // finish simulation after some time

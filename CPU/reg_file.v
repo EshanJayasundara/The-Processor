@@ -2,6 +2,8 @@
 // Design: Register File of the Simple Processor
 // Author: Eshan Jayasundara
 
+`timescale 1ns/100ps
+
 // W = width of a register
 // N = number of registers being created
 module reg_file #(parameter W = 8, parameter N = 8)(
