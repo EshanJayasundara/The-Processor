@@ -6,7 +6,7 @@
 
 // W = width of a register
 // N = number of registers being created
-module reg_file #(parameter W = 8, parameter N = 8)(
+module RegFile #(parameter W = 8, parameter N = 8)(
     input  [7:0] IN, 
     input  [2:0] INADDRESS,OUT1ADDRESS,OUT2ADDRESS, 
     input WRITE, CLK, RESET,

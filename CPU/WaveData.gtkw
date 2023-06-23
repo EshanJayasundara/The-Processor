@@ -1,0 +1,31 @@
+[*]
+[*] GTKWave Analyzer v3.3.48 (w)1999-2013 BSI
+[*] Mon Jun 19 06:49:29 2023
+[*]
+[dumpfile] "D:\SP2\CO224 Computer Architecture\LABS\lab6_part1\dump.vcd"
+[dumpfile_mtime] "Mon Jun 19 06:45:35 2023"
+[dumpfile_size] 97309
+[savefile] "D:\SP2\CO224 Computer Architecture\LABS\lab6_part1\WaveData.gtkw"
+[timestart] 0
+[size] 1000 600
+[pos] -1 -1
+*-14.000000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 197
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 153
+@28
+cpuTb.CLK
+@22
+cpuTb.PC[31:0]
+cpuTb.INSTRUCTION[31:0]
+@28
+cpuTb.BUSYWAIT
+cpuTb.READEN
+cpuTb.WRITEEN
+@22
+cpuTb.ADDRESS[7:0]
+cpuTb.READ_DATA[7:0]
+cpuTb.WRITE_DATA[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

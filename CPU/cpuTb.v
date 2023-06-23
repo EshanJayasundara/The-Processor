@@ -1,11 +1,13 @@
-`include "CPU.v"
-`timescale 1ns/100ps
-
 // Computer Architecture (CO224) - Lab 05
 // Design: Testbench of Integrated CPU of Simple Processor
 // Author: Isuru Nawinne
 
-module cpu_tb;
+`include "cpu.v"
+`include "dataMemory.v"
+`include "dcache.v"
+`timescale 1ns/100ps
+
+module cpuTb;
 
     reg CLK, RESET;
     wire signed [31:0] PC;
@@ -42,20 +44,63 @@ module cpu_tb;
      CPU |
     ------
     */
-    cpu cpu_dut(.PC(PC),
+
+    wire BUSYWAIT,READEN,WRITEEN,MEM_BUSYWAIT,MEM_READ,MEM_WRITE;
+    wire [7:0] ADDRESS,WRITE_DATA,READ_DATA;
+    wire [31:0] MEM_IN,MEM_OUT;
+    wire [5:0] MEM_ADDRESS;
+
+    Cpu Cpu_dut(.PC(PC),
                 .INSTRUCTION(INSTRUCTION),
                 .CLK(CLK),
-                .RESET(RESET)
+                .RESET(RESET),
+                .READ_DATA(READ_DATA),
+                .BUSYWAIT(BUSYWAIT),//input
+                .WRITEEN(WRITEEN),
+                .READEN(READEN),
+                .ADDRESS(ADDRESS),
+                .WRITE_DATA(WRITE_DATA)
                 );
+
+    dcache dcache_dut(.busywait(BUSYWAIT),
+		              .mem_read(MEM_READ),        
+		              .mem_write(MEM_WRITE),
+		              .mem_writedata(MEM_IN),
+		              .mem_address(MEM_ADDRESS),
+		              .readdata(READ_DATA),
+		              .mem_busywait(MEM_BUSYWAIT),
+		              .mem_readdata(MEM_OUT),
+		              .address(ADDRESS),
+		              .writedata(WRITE_DATA),
+		              .read(READEN),
+		              .write(WRITEEN),
+		              .clk(CLK),
+		              .reset(RESET)
+	                  );
     
+    DataMemory DataMemory_dut(
+	.clock(CLK),
+    .reset(RESET),
+    .read(MEM_READ),
+    .write(MEM_WRITE),
+    .address(MEM_ADDRESS),
+    .writedata(MEM_IN),
+    .readdata(MEM_OUT),
+    .busywait(MEM_BUSYWAIT)//output
+);
+
     integer i, j;
     initial
     begin
         // generate files needed to plot the waveform using GTKWave
         $dumpfile("dump.vcd");
-		$dumpvars(0, cpu_tb);
+		$dumpvars(0, cpuTb);
         for (j = 0; j < 8; j = j + 1) begin
-            $dumpvars(1, cpu_dut.reg_file_dut.registerfile[j]);
+            $dumpvars(1, Cpu_dut.RegFile_dut.registerfile[j]);
+        end
+
+        for (j = 0; j < 256; j = j + 1) begin
+            $dumpvars(1, DataMemory_dut.memory_array[j]);
         end
 
         // Initially CLK = 0
@@ -66,12 +111,16 @@ module cpu_tb;
         #5
         RESET= 0;
 
-        #300
+        #5000
         // Display register values
         for(i=0; i<8; i++) begin
-            $display("R%1d = %b", i, cpu_dut.reg_file_dut.registerfile[i]);
+            $display("R%1d = %b", i, Cpu_dut.RegFile_dut.registerfile[i]);
+            // $display("%d", dmem_dut.memory_array[1]);
         end
-
+        for(i=0; i<8; i++) begin
+            $display("Index %1d = %b_%b_%b_%b", i, dcache_dut.cache[i][31:24], dcache_dut.cache[i][23:16], dcache_dut.cache[i][15:8], dcache_dut.cache[i][7:0]);
+            // $display("%d", dmem_dut.memory_array[1]);
+        end
         // finish simulation after some time
         $finish;
     end

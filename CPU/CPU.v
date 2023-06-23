@@ -1,62 +1,62 @@
 // Computer Architecture (CO224) - Lab
 // Design: CPU of the Simple Processor
-// Author: Eshan Jayasundara
+// Author: Eshan Jayasundara, Sasindu Dilshan
 
 `timescale 1ns/100ps
 
-`include "ALU.v"
-`include "ControlUnit.v"
-`include "reg_file.v"
-`include "mult.v"
-`include "shift.v"
+`include "alu.v"
+`include "controlUnit.v"
+`include "regFile.v"
+`include "pcCond.v"
 
-module cpu (
-    input [31:0] INSTRUCTION,
-    input CLK, RESET,
-    output reg signed [31:0] PC
+module Cpu (
+    input  [31:0] INSTRUCTION,
+    input  CLK, RESET,
+    input  [7:0] READ_DATA,
+    input  BUSYWAIT,
+    output reg signed [31:0] PC,
+    output WRITEEN, READEN,
+    output [7:0] ADDRESS, WRITE_DATA
 );
     parameter W = 8, N = 8;
 
-    wire [W-1:0] OUT1,OUT2, ALU_OUT, MULT_OUT, SHIFT_OUT;
-    reg  [W-1:0] IN, IN1, IN2, OPCODE, mux2out,OUT;
+    wire [W-1:0] OUT1,OUT2, ALU_OUT;
+    reg  [W-1:0] IN, IN1, IN2, OPCODE, mux2out, OUT, mux4out;
     reg  [2:0] INADDRESS,OUT1ADDRESS,OUT2ADDRESS;
     wire [2:0] ALUOP;
-    wire WRITE, ZERO, mux1, mux2, mux3;
-    wire [1:0] mux4;
-    wire [1:0] SHIFT_TYPE; // issue wire SHIFT_TYPE;
-    
-    shift #(.W(W)) shift_dut (.data(OUT1), .shift_amt(IN2), .shift_type(SHIFT_TYPE), .result(SHIFT_OUT));
-    // .shift_type(SHIFT_TYPE) not working
+    wire WRITE, ZERO, mux1, mux2, mux3, mux4;
 
-    multiplier #(.W(W)) mult_dut (.MULTIPLIER(OUT1), .MULTIPLICAND(IN2), .OUT(MULT_OUT));
-
-    reg_file #(.W(W), .N(N)) reg_file_dut (.IN(OUT), 
+    RegFile #(.W(W), .N(N)) RegFile_dut (.IN(mux4out), 
                                            .OUT1(OUT1), 
                                            .OUT2(OUT2), 
                                            .INADDRESS(INADDRESS), 
                                            .OUT1ADDRESS(OUT1ADDRESS),
-                                           .OUT2ADDRESS(OUT2ADDRESS), 
+                                           .OUT2ADDRESS(OUT2ADDRESS),
                                            .WRITE(WRITE),
                                            .CLK(CLK),
                                            .RESET(RESET)
                                            );
+    assign WRITE_DATA = OUT1;
 
-    controlUnit controlUnit_dut(.OPCODE(OPCODE),
+    ControlUnit ControlUnit_dut(.INSTRUCTION(INSTRUCTION),
                                 .MUX1(mux1),
                                 .MUX2(mux2),
                                 .MUX3(mux3),
                                 .MUX4(mux4),
                                 .ALUOP(ALUOP),
                                 .WRITE(WRITE),
-                                .shift_type(SHIFT_TYPE)
+                                .READEN(READEN),
+                                .WRITEEN(WRITEEN),
+                                .BUSYWAIT(BUSYWAIT)
                                 );
 
-    alu #(.W(8)) alu_dut(.data1(OUT1),
+    Alu #(.W(8)) Alu_dut(.data1(OUT1),
                          .operation(ALUOP),
                          .result(ALU_OUT),
                          .data2(IN2),
                          .ZERO(ZERO)
                          );
+    assign ADDRESS = ALU_OUT;
 
     // Decoder
     always @(*) begin
@@ -67,14 +67,14 @@ module cpu (
         INADDRESS   = INSTRUCTION[18:16];
     end
 
-    // mux to select ALU or Multiplier or shift
+    //MUX 4 for select aluout or data_mem_out
     always @(*) begin
-        case(mux4)
-            2'b00: OUT = ALU_OUT;
-            2'b01: OUT = MULT_OUT;
-            2'b10: OUT = SHIFT_OUT;
-            2'b11: OUT = SHIFT_OUT;
-        endcase
+        if(mux4) begin
+            #1
+            mux4out = READ_DATA;
+        end else begin
+            mux4out = ALU_OUT;
+        end
     end
 
     // MUX 2 for selecting subtracting or addition
@@ -96,6 +96,10 @@ module cpu (
         end
     end
 
+    wire F;
+    PcCond PcCond_dut(.P(mux3 == 1'b1), .Q(INSTRUCTION[26:24] == 3'b111), .R(ZERO == 1'b1), .S(INSTRUCTION[27:24] == 4'b1000), .T(ZERO == 1'b0), .F(F));
+
+
     //Program Counter
     wire signed [22:0] signBits = {22{INSTRUCTION[23]}};
     wire signed [31:0] target = {signBits, INSTRUCTION[23:16], 2'b00};
@@ -103,7 +107,8 @@ module cpu (
     always @(posedge CLK) begin
         if(RESET == 1'b1) #1 PC <= 0;
         else begin
-            if(mux3 == 1'b1 || (INSTRUCTION[26:24] == 3'b111 && ZERO == 1'b1)||(INSTRUCTION[27:24] == 4'b1000 && ZERO == 1'b0)) #1 PC <= PC + target + 4;
+            if(F) #1 PC <= PC + target + 4;
+            else if(BUSYWAIT) PC <= PC;
             else #1 PC <= PC+4;
         end
     end
